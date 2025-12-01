@@ -1,0 +1,88 @@
+services:
+  mailpit:
+    image: axllent/mailpit
+    container_name: mailpit
+    restart: always
+    volumes:
+      - ./data/mailpit:/data/mailpit
+      - ./certs/tls.crt:/etc/ssl/tls.crt
+      - ./certs/tls.key:/etc/ssl/tls.key
+    ports:
+      - 8443:8025
+      - 1025:1025
+    environment:
+      MP_MAX_MESSAGES: 5000
+      MP_DATABASE: /data/mailpit/mailpit.db
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+      MP_UI_TLS_CERT: /etc/ssl/tls.crt
+      MP_UI_TLS_KEY: /etc/ssl/tls.key
+    networks:
+      - apps
+
+  mariadb:
+    restart: always
+    container_name: mariadb
+    image: mariadb
+    command: --default-authentication-plugin=mysql_native_password
+    ports:
+      - 3306:3306
+    volumes:
+      - ./data/mariadb:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=password
+      - MYSQL_ROOT_HOST=%
+      - TZ=Europe/Prague
+    networks:
+      - apps
+  
+  postgres:
+    image: postgres:17
+    container_name: postgres
+    restart: always
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: password
+      TZ: Europe/Prague
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    networks:
+      - apps
+
+  redis:
+    restart: always
+    container_name: redis
+    image: redis/redis-stack:latest
+    ports:
+      - 8001:8001
+    volumes:
+      - ./data/redis:/data
+    environment:
+      - REDIS_ARGS="--requirepass password"
+    networks:
+      - apps
+
+  rabbitmq:
+    image: rabbitmq:4.2-management
+    container_name: rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: root
+      RABBITMQ_DEFAULT_PASS: password
+      RABBITMQ_ERLANG_COOKIE: top-secret
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    ports:
+      - "15672:15672"
+    networks:
+      - apps
+
+volumes:
+  rabbitmq_data:
+      
+networks:
+  apps:
+    external: true
+    driver: bridge
